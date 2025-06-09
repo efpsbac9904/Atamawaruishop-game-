@@ -1,1 +1,541 @@
-Making
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>あたまわるいげーむ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* ダークな背景 */
+            color: #e2e8f0; /* 明るいテキスト */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+            box-sizing: border-box;
+            -webkit-user-select: none; /* iOS Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
+        }
+
+        /* ゲームコンテナのスタイル */
+        .game-container {
+            background-color: #2d3748; /* ダークグレーの背景 */
+            border-radius: 20px; /* 角を丸く */
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); /* 影 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 100%; /* 幅を最大化 */
+            width: 400px; /* ある程度の最大幅 */
+        }
+
+        /* キャンバスのスタイル */
+        canvas {
+            background-color: #000; /* 黒の背景 */
+            border: 4px solid #4a5568; /* 暗い青の境界線 */
+            border-radius: 10px; /* 角を丸く */
+            display: block; /* 余分なスペースを削除 */
+            touch-action: none; /* タッチイベントのデフォルト動作を無効化 */
+            width: 100%; /* 親要素の幅に合わせる */
+            height: auto; /* 高さを自動調整し、アスペクト比を維持 */
+        }
+
+        /* スコアとメッセージのスタイル */
+        .score-display, .message-box {
+            margin-top: 16px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #90cdf4; /* 明るい青 */
+            text-align: center;
+            padding: 8px 16px;
+            background-color: #4a5568;
+            border-radius: 8px;
+        }
+
+        /* ゲームオーバーメッセージのスタイル */
+        .message-box {
+            background-color: #c53030; /* 赤 */
+            color: #fff;
+            padding: 20px;
+            font-size: 2rem;
+            border-radius: 12px;
+            display: none; /* 初期状態では非表示 */
+            position: absolute; /* ゲームの上に重ねる */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* コントロールボタンのコンテナ */
+        .controls {
+            display: flex;
+            flex-wrap: wrap; /* ボタンが複数行になる可能性 */
+            justify-content: center;
+            gap: 12px; /* ボタン間のスペース */
+            margin-top: 24px;
+            width: 100%;
+        }
+
+        /* 個々のコントロールボタンのスタイル */
+        .control-button {
+            background-color: #63b3ed; /* 明るい青 */
+            color: #1a202c; /* ダークなテキスト */
+            font-size: 1.25rem;
+            font-weight: bold;
+            padding: 16px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            flex: 1 1 auto; /* フレックスアイテムとして柔軟にサイズ調整 */
+            max-width: 150px; /* ボタンの最大幅 */
+            min-width: 80px; /* ボタンの最小幅 */
+            text-align: center;
+            border: none;
+            -webkit-tap-highlight-color: transparent; /* モバイルでのタップ時のハイライトを無効化 */
+        }
+
+        .control-button:hover {
+            background-color: #4299e1; /* ホバー時の色 */
+            transform: translateY(-2px); /* 少し上に移動 */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-button:active {
+            background-color: #3182ce; /* クリック時の色 */
+            transform: translateY(0); /* 元の位置に戻る */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* モバイルレイアウトでのボタンの配置 */
+        @media (max-width: 640px) {
+            .controls {
+                flex-direction: column; /* モバイルではボタンを縦に並べる */
+                align-items: center;
+                gap: 10px;
+            }
+            .control-button {
+                width: 90%; /* モバイルではボタンの幅を広げる */
+                max-width: 200px; /* 最大幅も調整 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-3xl font-bold mb-4">テトリス</h1>
+        <div id="score" class="score-display">スコア: 0</div>
+        <canvas id="tetrisCanvas"></canvas>
+        <div id="messageBox" class="message-box"></div>
+        <div class="controls">
+            <button id="leftButton" class="control-button">←</button>
+            <button id="rotateButton" class="control-button">回転</button>
+            <button id="rightButton" class="control-button">→</button>
+            <button id="downButton" class="control-button">↓</button>
+            <button id="resetButton" class="control-button">リセット</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tetrisCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const messageBox = document.getElementById('messageBox');
+
+        // ゲームボードの設定
+        const COLS = 10; // 列数
+        const ROWS = 20; // 行数
+        const BLOCK_SIZE = 30; // ブロックのサイズ (px)
+
+        // キャンバスのサイズを設定 (CSSで幅100%に設定されているため、高さはブロックサイズに基づいて設定)
+        canvas.width = COLS * BLOCK_SIZE;
+        canvas.height = ROWS * BLOCK_SIZE;
+
+        let board = []; // ゲームボードの二次元配列
+        let currentPiece; // 現在操作中のテトリミノ
+        let nextPiece; // 次のテトリミノ
+        let score = 0;
+        let gameOver = false;
+        let gameInterval; // ゲームループのインターバルID
+        let dropSpeed = 1000; // 落下速度 (ミリ秒)
+
+        // テトリミノの形状と色
+        const TETROMINOES = [
+            // I (水色)
+            { shape: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], color: '#00FFFF' },
+            // J (青)
+            { shape: [[1,0,0], [1,1,1], [0,0,0]], color: '#0000FF' },
+            // L (オレンジ)
+            { shape: [[0,0,1], [1,1,1], [0,0,0]], color: '#FFA500' },
+            // O (黄)
+            { shape: [[1,1], [1,1]], color: '#FFFF00' },
+            // S (緑)
+            { shape: [[0,1,1], [1,1,0], [0,0,0]], color: '#008000' },
+            // T (紫)
+            { shape: [[0,1,0], [1,1,1], [0,0,0]], color: '#800080' },
+            // Z (赤)
+            { shape: [[1,1,0], [0,1,1], [0,0,0]], color: '#FF0000' }
+        ];
+
+        // ボードを初期化
+        function initBoard() {
+            for (let r = 0; r < ROWS; r++) {
+                board[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    board[r][c] = 0; // 0は空のブロック
+                }
+            }
+        }
+
+        // ブロックを描画
+        function drawBlock(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            ctx.strokeStyle = '#333'; // ブロックの境界線
+            ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+        }
+
+        // ボード全体を描画
+        function drawBoard() {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c] !== 0) {
+                        drawBlock(c, r, board[r][c]);
+                    } else {
+                        // 空のマスは背景色で塗りつぶす
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+
+        // 現在のテトリミノを描画
+        function drawPiece() {
+            if (!currentPiece) return;
+            for (let r = 0; r < currentPiece.shape.length; r++) {
+                for (let c = 0; c < currentPiece.shape[r].length; c++) {
+                    if (currentPiece.shape[r][c]) {
+                        drawBlock(currentPiece.x + c, currentPiece.y + r, currentPiece.color);
+                    }
+                }
+            }
+        }
+
+        // 新しいテトリミノを生成
+        function generateNewPiece() {
+            const randomIndex = Math.floor(Math.random() * TETROMINOES.length);
+            const newPiece = TETROMINOES[randomIndex];
+            currentPiece = {
+                shape: newPiece.shape,
+                color: newPiece.color,
+                x: Math.floor(COLS / 2) - Math.floor(newPiece.shape[0].length / 2), // 中央に配置
+                y: 0 // 上から開始
+            };
+
+            // ゲームオーバー判定: 新しいピースが配置できない場合
+            if (!isValidMove(currentPiece.x, currentPiece.y, currentPiece.shape)) {
+                gameOver = true;
+                showMessage('ゲームオーバー！ スコア: ' + score, true);
+                clearInterval(gameInterval);
+            }
+        }
+
+        // 移動が有効かチェック
+        function isValidMove(x, y, shape) {
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c]) {
+                        let newX = x + c;
+                        let newY = y + r;
+
+                        // ボードの境界線チェック
+                        if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                            return false;
+                        }
+                        // ボードの上限チェック (Y < 0は許容、ピースが生成される場所のため)
+                        if (newY < 0) {
+                            continue;
+                        }
+                        // 他のブロックとの衝突チェック
+                        if (board[newY] && board[newY][newX] !== 0) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        // テトリミノをボードに固定
+        function mergePiece() {
+            for (let r = 0; r < currentPiece.shape.length; r++) {
+                for (let c = 0; c < currentPiece.shape[r].length; c++) {
+                    if (currentPiece.shape[r][c]) {
+                        // y座標がマイナスの場合はボードの範囲外なのでスキップ
+                        if (currentPiece.y + r >= 0) {
+                             board[currentPiece.y + r][currentPiece.x + c] = currentPiece.color;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 完成した行をクリア
+        function clearRows() {
+            let rowsCleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                let rowIsFull = true;
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c] === 0) {
+                        rowIsFull = false;
+                        break;
+                    }
+                }
+                if (rowIsFull) {
+                    rowsCleared++;
+                    // 行を削除し、上の行を下に移動
+                    for (let y = r; y > 0; y--) {
+                        board[y] = [...board[y - 1]]; // 配列をコピー
+                    }
+                    board[0] = Array(COLS).fill(0); // 最上段を空にする
+                    r++; // 同じ行を再度チェックするためにインクリメント
+                }
+            }
+            if (rowsCleared > 0) {
+                // スコアの計算 (テトリス効果)
+                score += [0, 100, 300, 500, 800][rowsCleared];
+                updateScore();
+                // 落下速度の調整 (任意)
+                // if (dropSpeed > 100) {
+                //     dropSpeed -= 50;
+                //     clearInterval(gameInterval);
+                //     startGameLoop();
+                // }
+            }
+        }
+
+        // テトリミノを回転
+        function rotatePiece() {
+            if (gameOver) return;
+
+            let originalShape = currentPiece.shape;
+            let rotatedShape = [];
+            for (let c = 0; c < originalShape[0].length; c++) {
+                rotatedShape[c] = [];
+                for (let r = originalShape.length - 1; r >= 0; r--) {
+                    rotatedShape[c].push(originalShape[r][c]);
+                }
+            }
+
+            // 回転後の位置が有効かチェック
+            if (isValidMove(currentPiece.x, currentPiece.y, rotatedShape)) {
+                currentPiece.shape = rotatedShape;
+            } else {
+                // 壁蹴り (Wall Kick) 処理 (簡易版)
+                // 右に1つ移動して試す
+                if (isValidMove(currentPiece.x + 1, currentPiece.y, rotatedShape)) {
+                    currentPiece.x++;
+                    currentPiece.shape = rotatedShape;
+                }
+                // 左に1つ移動して試す
+                else if (isValidMove(currentPiece.x - 1, currentPiece.y, rotatedShape)) {
+                    currentPiece.x--;
+                    currentPiece.shape = rotatedShape;
+                }
+                // 下に1つ移動して試す (天井にぶつかる場合など)
+                else if (isValidMove(currentPiece.x, currentPiece.y + 1, rotatedShape)) {
+                    currentPiece.y++;
+                    currentPiece.shape = rotatedShape;
+                }
+            }
+        }
+
+        // テトリミノを移動
+        function movePiece(direction) { // direction: -1 (左), 1 (右)
+            if (gameOver) return;
+            if (isValidMove(currentPiece.x + direction, currentPiece.y, currentPiece.shape)) {
+                currentPiece.x += direction;
+            }
+        }
+
+        // テトリミノを下に落下
+        function dropPiece() {
+            if (gameOver) return;
+            if (isValidMove(currentPiece.x, currentPiece.y + 1, currentPiece.shape)) {
+                currentPiece.y++;
+            } else {
+                // ピースが着地した場合
+                mergePiece();
+                clearRows();
+                generateNewPiece();
+            }
+            updateGame();
+        }
+
+        // スコアを更新
+        function updateScore() {
+            scoreDisplay.textContent = 'スコア: ' + score;
+        }
+
+        // ゲームの状態を更新して描画
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // キャンバスをクリア
+            drawBoard();
+            drawPiece();
+        }
+
+        // ゲームループの開始
+        function startGameLoop() {
+            gameInterval = setInterval(dropPiece, dropSpeed);
+        }
+
+        // ゲームオーバーメッセージの表示/非表示
+        function showMessage(msg, isGameOver = false) {
+            messageBox.textContent = msg;
+            messageBox.style.display = 'block';
+            if (isGameOver) {
+                messageBox.classList.add('bg-red-700', 'text-white'); // ゲームオーバー時のスタイル
+            } else {
+                messageBox.classList.remove('bg-red-700', 'text-white');
+            }
+        }
+
+        function hideMessage() {
+            messageBox.style.display = 'none';
+        }
+
+        // ゲームをリセット
+        function resetGame() {
+            clearInterval(gameInterval); // 既存のゲームループを停止
+            initBoard(); // ボードを初期化
+            score = 0; // スコアをリセット
+            updateScore();
+            gameOver = false; // ゲームオーバーフラグをリセット
+            hideMessage(); // メッセージを非表示に
+            generateNewPiece(); // 新しいピースを生成
+            startGameLoop(); // 新しいゲームループを開始
+            updateGame(); // ゲーム画面を更新
+        }
+
+        // キーボードイベントリスナー
+        document.addEventListener('keydown', e => {
+            if (gameOver) return;
+            switch (e.key) {
+                case 'ArrowLeft':
+                    movePiece(-1);
+                    break;
+                case 'ArrowRight':
+                    movePiece(1);
+                    break;
+                case 'ArrowDown':
+                    dropPiece();
+                    break;
+                case 'ArrowUp':
+                case ' ': // スペースキー
+                    rotatePiece();
+                    break;
+            }
+            updateGame();
+        });
+
+        // モバイルボタンイベントリスナー
+        document.getElementById('leftButton').addEventListener('click', () => {
+            movePiece(-1);
+            updateGame();
+        });
+        document.getElementById('rightButton').addEventListener('click', () => {
+            movePiece(1);
+            updateGame();
+        });
+        document.getElementById('downButton').addEventListener('click', () => {
+            dropPiece();
+            updateGame();
+        });
+        document.getElementById('rotateButton').addEventListener('click', () => {
+            rotatePiece();
+            updateGame();
+        });
+        document.getElementById('resetButton').addEventListener('click', () => {
+            resetGame();
+        });
+
+        // タッチスワイプイベントリスナー
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        canvas.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: false }); // passive: false を設定して preventDefault を許可
+
+        canvas.addEventListener('touchmove', e => {
+            // スクロールを防ぐためにデフォルトの動作をキャンセル
+            e.preventDefault();
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].clientX;
+            touchEndY = e.changedTouches[0].clientY;
+
+            let deltaX = touchEndX - touchStartX;
+            let deltaY = touchEndY - touchStartY;
+
+            const SWIPE_THRESHOLD = 30; // スワイプと認識するしきい値
+
+            if (gameOver) return;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+                // 水平スワイプ
+                if (deltaX > 0) {
+                    movePiece(1); // 右スワイプ
+                } else {
+                    movePiece(-1); // 左スワイプ
+                }
+            } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > SWIPE_THRESHOLD) {
+                // 垂直スワイプ
+                if (deltaY > 0) {
+                    dropPiece(); // 下スワイプ
+                } else {
+                    rotatePiece(); // 上スワイプ (回転)
+                }
+            }
+            updateGame();
+        });
+
+        // ウィンドウの読み込みが完了したらゲームを開始
+        window.onload = function() {
+            resetGame(); // ゲームを初期化して開始
+        };
+
+        // ウィンドウのリサイズ時にキャンバスの幅を再設定
+        window.addEventListener('resize', () => {
+            // CSSで幅が100%に設定されているため、canvas.widthは自動的に調整されます。
+            // ただし、ブロックサイズに合わせて内部的なピクセルサイズを再設定する必要がある場合があります。
+            // ここでは簡易的に、現在の表示幅をCOLSで割り、BLOCK_SIZEを再計算することも可能ですが、
+            // 固定BLOCK_SIZEとCSSでの幅100%の組み合わせで、アスペクト比を維持しつつスケーリングします。
+            // 必要に応じて、ctx.scale()などを使用して描画をスケーリングすることも検討します。
+            // 現状では、COLS * BLOCK_SIZE で設定した初期のキャンバスサイズに基づいて描画が行われるため、
+            // CSSによるスケーリングが行われた場合、内部の描画解像度は変わりません。
+            // 完全にレスポンシブな描画を行う場合は、BLOCK_SIZEもウィンドウサイズに合わせて動的に計算する必要があります。
+            // このテトリスでは、固定のBLOCK_SIZEを維持し、CSSでキャンバスが画面幅にフィットするようにしています。
+            // そのため、画面リサイズ時に再描画する必要はありません。
+            updateGame();
+        });
+
+    </script>
+</body>
+</html>
