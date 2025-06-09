@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pぽぽぽぽぽげ</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* ダークな背景 */
+            color: #e2e8f0; /* 明るいテキスト */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+            box-sizing: border-box;
+            -webkit-user-select: none; /* iOS Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version */
+        }
+
+        /* ゲームコンテナのスタイル */
+        .game-container {
+            background-color: #2d3748; /* ダークグレーの背景 */
+            border-radius: 20px; /* 角を丸く */
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); /* 影 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 100%; /* 幅を最大化 */
+            width: 600px; /* ある程度の最大幅 */
+        }
+
+        /* スコア表示のスタイル */
+        .score-display {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-bottom: 16px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #90cdf4; /* 明るい青 */
+        }
+
+        /* キャンバスのスタイル */
+        canvas {
+            background-color: #000; /* 黒の背景 */
+            border: 4px solid #4a5568; /* 暗い青の境界線 */
+            border-radius: 10px; /* 角を丸く */
+            display: block; /* 余分なスペースを削除 */
+            touch-action: none; /* タッチイベントのデフォルト動作を無効化 */
+            width: 100%; /* 親要素の幅に合わせる */
+            height: auto; /* 高さを自動調整 */
+            aspect-ratio: 16 / 9; /* アスペクト比を維持 */
+        }
+
+        /* ゲームオーバーメッセージのスタイル */
+        .message-box {
+            background-color: #c53030; /* 赤 */
+            color: #fff;
+            padding: 20px;
+            font-size: 2rem;
+            border-radius: 12px;
+            display: none; /* 初期状態では非表示 */
+            position: absolute; /* ゲームの上に重ねる */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        /* コントロールボタンのコンテナ */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px; /* ボタン間のスペース */
+            margin-top: 24px;
+            width: 100%;
+            flex-wrap: wrap; /* 折り返し */
+        }
+
+        /* 個々のコントロールボタンのスタイル */
+        .control-button {
+            background-color: #63b3ed; /* 明るい青 */
+            color: #1a202c; /* ダークなテキスト */
+            font-size: 1.25rem;
+            font-weight: bold;
+            padding: 16px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            flex: 1 1 auto; /* フレックスアイテムとして柔軟にサイズ調整 */
+            max-width: 180px; /* ボタンの最大幅 */
+            min-width: 120px; /* ボタンの最小幅 */
+            text-align: center;
+            border: none;
+            -webkit-tap-highlight-color: transparent; /* モバイルでのタップ時のハイライトを無効化 */
+        }
+
+        .control-button:hover {
+            background-color: #4299e1; /* ホバー時の色 */
+            transform: translateY(-2px); /* 少し上に移動 */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-button:active {
+            background-color: #3182ce; /* クリック時の色 */
+            transform: translateY(0); /* 元の位置に戻る */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* モバイルレイアウトでのボタン配置調整 */
+        @media (max-width: 640px) {
+            .controls {
+                flex-direction: column; /* モバイルではボタンを縦に並べる */
+                align-items: center;
+                gap: 10px;
+            }
+            .control-button {
+                width: 90%; /* モバイルではボタンの幅を広げる */
+                max-width: 250px;
+            }
+            .score-display {
+                font-size: 1.5rem; /* モバイルでのスコア表示サイズ調整 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-3xl font-bold mb-4">ポンゲーム</h1>
+        <div class="score-display">
+            <span id="player1Score">プレイヤー1: 0</span>
+            <span id="player2Score">プレイヤー2: 0</span>
+        </div>
+        <canvas id="pongCanvas"></canvas>
+        <div id="messageBox" class="message-box"></div>
+        <div class="controls">
+            <button id="player1UpButton" class="control-button">P1 ↑</button>
+            <button id="player1DownButton" class="control-button">P1 ↓</button>
+            <button id="player2UpButton" class="control-button">P2 ↑</button>
+            <button id="player2DownButton" class="control-button">P2 ↓</button>
+            <button id="resetButton" class="control-button">リセット</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pongCanvas');
+        const ctx = canvas.getContext('2d');
+        const player1ScoreDisplay = document.getElementById('player1Score');
+        const player2ScoreDisplay = document.getElementById('player2Score');
+        const messageBox = document.getElementById('messageBox');
+
+        // ゲームボードの設定
+        const CANVAS_WIDTH = 600;
+        const CANVAS_HEIGHT = 400;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        const PADDLE_WIDTH = 10;
+        const PADDLE_HEIGHT = 100;
+        const BALL_RADIUS = 8;
+
+        let player1 = {
+            x: 0,
+            y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+            width: PADDLE_WIDTH,
+            height: PADDLE_HEIGHT,
+            score: 0,
+            dy: 0 // 移動速度
+        };
+
+        let player2 = {
+            x: CANVAS_WIDTH - PADDLE_WIDTH,
+            y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+            width: PADDLE_WIDTH,
+            height: PADDLE_HEIGHT,
+            score: 0,
+            dy: 0 // 移動速度
+        };
+
+        let ball = {
+            x: CANVAS_WIDTH / 2,
+            y: CANVAS_HEIGHT / 2,
+            radius: BALL_RADIUS,
+            dx: 5, // ボールのX方向速度
+            dy: 5  // ボールのY方向速度
+        };
+
+        let gameInterval;
+        let gameSpeed = 1000 / 60; // 60 FPS
+
+        // キーボードの状態を追跡
+        let keys = {};
+        let paddleSpeed = 7;
+
+        // ゲームの初期化
+        function initGame() {
+            player1.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
+            player2.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
+            player1.score = 0;
+            player2.score = 0;
+            updateScores();
+            hideMessage();
+            resetBall();
+            if (gameInterval) clearInterval(gameInterval);
+            startGameLoop();
+        }
+
+        // ボールをリセット
+        function resetBall() {
+            ball.x = CANVAS_WIDTH / 2;
+            ball.y = CANVAS_HEIGHT / 2;
+            ball.dx = 5 * (Math.random() > 0.5 ? 1 : -1); // ランダムな方向へ
+            ball.dy = 5 * (Math.random() > 0.5 ? 1 : -1);
+        }
+
+        // 要素を描画
+        function draw() {
+            // 背景
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // 中央の破線
+            ctx.strokeStyle = '#333';
+            ctx.beginPath();
+            ctx.setLineDash([10, 10]);
+            ctx.moveTo(CANVAS_WIDTH / 2, 0);
+            ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT);
+            ctx.stroke();
+            ctx.setLineDash([]); // リセット
+
+            // パドル
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(player1.x, player1.y, player1.width, player1.height);
+            ctx.fillRect(player2.x, player2.y, player2.width, player2.height);
+
+            // ボール
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#FFF';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // ゲームの状態を更新
+        function update() {
+            // パドルの移動
+            player1.y += player1.dy;
+            player2.y += player2.dy;
+
+            // パドルが境界線を越えないように
+            player1.y = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, player1.y));
+            player2.y = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, player2.y));
+
+            // ボールの移動
+            ball.x += ball.dx;
+            ball.y += ball.dy;
+
+            // ボールが上下の壁に当たった場合
+            if (ball.y + ball.radius > CANVAS_HEIGHT || ball.y - ball.radius < 0) {
+                ball.dy *= -1;
+            }
+
+            // ボールがパドルに当たった場合
+            // プレイヤー1のパドル
+            if (ball.x - ball.radius < player1.x + player1.width &&
+                ball.y + ball.radius > player1.y &&
+                ball.y - ball.radius < player1.y + player1.height) {
+                ball.dx *= -1;
+                // パドルのどこに当たったかによってY方向の速度を調整
+                let collidePoint = ball.y - (player1.y + PADDLE_HEIGHT / 2);
+                collidePoint = collidePoint / (PADDLE_HEIGHT / 2); // -1から1の範囲に正規化
+                ball.dy = collidePoint * 5; // 速度を調整
+            }
+
+            // プレイヤー2のパドル
+            if (ball.x + ball.radius > player2.x &&
+                ball.y + ball.radius > player2.y &&
+                ball.y - ball.radius < player2.y + player2.height) {
+                ball.dx *= -1;
+                // パドルのどこに当たったかによってY方向の速度を調整
+                let collidePoint = ball.y - (player2.y + PADDLE_HEIGHT / 2);
+                collidePoint = collidePoint / (PADDLE_HEIGHT / 2);
+                ball.dy = collidePoint * 5;
+            }
+
+            // ボールが左右の壁を越えた場合 (得点)
+            if (ball.x - ball.radius < 0) { // プレイヤー2が得点
+                player2.score++;
+                updateScores();
+                resetBall();
+            } else if (ball.x + ball.radius > CANVAS_WIDTH) { // プレイヤー1が得点
+                player1.score++;
+                updateScores();
+                resetBall();
+            }
+
+            // ゲームオーバー判定 (どちらかのスコアが10に達した場合)
+            if (player1.score >= 10) {
+                endGame("プレイヤー1の勝利！");
+            } else if (player2.score >= 10) {
+                endGame("プレイヤー2の勝利！");
+            }
+        }
+
+        // スコアを更新
+        function updateScores() {
+            player1ScoreDisplay.textContent = `プレイヤー1: ${player1.score}`;
+            player2ScoreDisplay.textContent = `プレイヤー2: ${player2.score}`;
+        }
+
+        // ゲームループ
+        function gameLoop() {
+            update();
+            draw();
+        }
+
+        // ゲームループの開始
+        function startGameLoop() {
+            gameInterval = setInterval(gameLoop, gameSpeed);
+        }
+
+        // ゲームオーバー処理
+        function endGame(message) {
+            clearInterval(gameInterval);
+            showMessage(message);
+        }
+
+        // メッセージボックスの表示/非表示
+        function showMessage(msg) {
+            messageBox.textContent = msg;
+            messageBox.style.display = 'block';
+        }
+
+        function hideMessage() {
+            messageBox.style.display = 'none';
+        }
+
+        // キーボードイベントリスナー
+        document.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            if (e.key === 'ArrowUp') player2.dy = -paddleSpeed;
+            if (e.key === 'ArrowDown') player2.dy = paddleSpeed;
+            if (e.key === 'w' || e.key === 'W') player1.dy = -paddleSpeed;
+            if (e.key === 's' || e.key === 'S') player1.dy = paddleSpeed;
+        });
+
+        document.addEventListener('keyup', e => {
+            keys[e.key] = false;
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') player2.dy = 0;
+            if (e.key === 'w' || e.key === 'W' || e.key === 's' || e.key === 'S') player1.dy = 0;
+        });
+
+        // モバイルボタンイベントリスナー
+        document.getElementById('player1UpButton').addEventListener('touchstart', () => {
+            player1.dy = -paddleSpeed;
+        });
+        document.getElementById('player1UpButton').addEventListener('touchend', () => {
+            player1.dy = 0;
+        });
+        document.getElementById('player1DownButton').addEventListener('touchstart', () => {
+            player1.dy = paddleSpeed;
+        });
+        document.getElementById('player1DownButton').addEventListener('touchend', () => {
+            player1.dy = 0;
+        });
+
+        document.getElementById('player2UpButton').addEventListener('touchstart', () => {
+            player2.dy = -paddleSpeed;
+        });
+        document.getElementById('player2UpButton').addEventListener('touchend', () => {
+            player2.dy = 0;
+        });
+        document.getElementById('player2DownButton').addEventListener('touchstart', () => {
+            player2.dy = paddleSpeed;
+        });
+        document.getElementById('player2DownButton').addEventListener('touchend', () => {
+            player2.dy = 0;
+        });
+
+        document.getElementById('resetButton').addEventListener('click', () => {
+            initGame();
+        });
+
+        // モバイルタッチスワイプでパドルを操作
+        let touchStartP1Y = 0;
+        let touchStartP2Y = 0;
+        let lastP1Y = 0;
+        let lastP2Y = 0;
+
+        canvas.addEventListener('touchstart', e => {
+            // パドル1側のタッチ
+            if (e.touches[0].clientX < CANVAS_WIDTH / 2) {
+                touchStartP1Y = e.touches[0].clientY;
+                lastP1Y = player1.y; // 現在のパドルの位置を記録
+            }
+            // パドル2側のタッチ
+            else {
+                touchStartP2Y = e.touches[0].clientY;
+                lastP2Y = player2.y; // 現在のパドルの位置を記録
+            }
+            e.preventDefault(); // スクロールを防ぐ
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault(); // スクロールを防ぐ
+            for (let i = 0; i < e.touches.length; i++) {
+                const touch = e.touches[i];
+                if (touch.clientX < CANVAS_WIDTH / 2) { // プレイヤー1側
+                    const deltaY = touch.clientY - touchStartP1Y;
+                    player1.y = lastP1Y + deltaY;
+                    player1.y = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, player1.y));
+                } else { // プレイヤー2側
+                    const deltaY = touch.clientY - touchStartP2Y;
+                    player2.y = lastP2Y + deltaY;
+                    player2.y = Math.max(0, Math.min(CANVAS_HEIGHT - PADDLE_HEIGHT, player2.y));
+                }
+            }
+        }, { passive: false });
+
+        // ウィンドウの読み込みが完了したらゲームを開始
+        window.onload = function() {
+            initGame(); // ゲームを初期化して開始
+        };
+
+        // ウィンドウのリサイズ時にキャンバスの描画を調整
+        window.addEventListener('resize', () => {
+            // CSSでキャンバスのサイズが調整されるため、
+            // ゲーム内の座標計算は固定のCANVAS_WIDTH/HEIGHTを維持します。
+            // 必要に応じて、ctx.scale()などで描画をスケーリングすることも検討しますが、
+            // 通常のPongでは固定サイズで十分です。
+            draw(); // 再描画して表示を更新
+        });
+    </script>
+</body>
+</html>
