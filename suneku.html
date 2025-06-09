@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>あああmmままへへへへへへ蛇</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Interフォントを適用 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* ダークな背景 */
+            color: #e2e8f0; /* 明るいテキスト */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+            box-sizing: border-box;
+            -webkit-user-select: none; /* iOS Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version */
+        }
+
+        /* ゲームコンテナのスタイル */
+        .game-container {
+            background-color: #2d3748; /* ダークグレーの背景 */
+            border-radius: 20px; /* 角を丸く */
+            padding: 24px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4); /* 影 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 100%; /* 幅を最大化 */
+            width: 400px; /* ある程度の最大幅 */
+        }
+
+        /* キャンバスのスタイル */
+        canvas {
+            background-color: #000; /* 黒の背景 */
+            border: 4px solid #4a5568; /* 暗い青の境界線 */
+            border-radius: 10px; /* 角を丸く */
+            display: block; /* 余分なスペースを削除 */
+            touch-action: none; /* タッチイベントのデフォルト動作を無効化 */
+            width: 100%; /* 親要素の幅に合わせる */
+            height: auto; /* 高さを自動調整し、アスペクト比を維持 */
+            aspect-ratio: 1 / 1; /* 正方形を維持 */
+        }
+
+        /* スコアとメッセージのスタイル */
+        .score-display, .message-box {
+            margin-top: 16px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #90cdf4; /* 明るい青 */
+            text-align: center;
+            padding: 8px 16px;
+            background-color: #4a5568;
+            border-radius: 8px;
+        }
+
+        /* ゲームオーバーメッセージのスタイル */
+        .message-box {
+            background-color: #c53030; /* 赤 */
+            color: #fff;
+            padding: 20px;
+            font-size: 2rem;
+            border-radius: 12px;
+            display: none; /* 初期状態では非表示 */
+            position: absolute; /* ゲームの上に重ねる */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        /* コントロールボタンのコンテナ */
+        .controls {
+            display: grid;
+            grid-template-areas:
+                ". up ."
+                "left down right"
+                ". reset ."; /* Grid areas for button placement */
+            gap: 12px; /* ボタン間のスペース */
+            margin-top: 24px;
+            width: 100%;
+            max-width: 300px; /* Adjust maximum width for controls */
+        }
+
+        /* 個々のコントロールボタンのスタイル */
+        .control-button {
+            background-color: #63b3ed; /* 明るい青 */
+            color: #1a202c; /* ダークなテキスト */
+            font-size: 1.25rem;
+            font-weight: bold;
+            padding: 16px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            border: none;
+            -webkit-tap-highlight-color: transparent; /* モバイルでのタップ時のハイライトを無効化 */
+        }
+
+        .control-button:hover {
+            background-color: #4299e1; /* ホバー時の色 */
+            transform: translateY(-2px); /* 少し上に移動 */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-button:active {
+            background-color: #3182ce; /* クリック時の色 */
+            transform: translateY(0); /* 元の位置に戻る */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Grid area assignments for buttons */
+        #upButton { grid-area: up; }
+        #leftButton { grid-area: left; }
+        #downButton { grid-area: down; }
+        #rightButton { grid-area: right; }
+        #resetButton { grid-area: reset; }
+
+        /* モバイルレイアウトでのボタンの配置調整（必要に応じて） */
+        @media (max-width: 640px) {
+            .controls {
+                max-width: 250px;
+                gap: 8px;
+            }
+            .control-button {
+                padding: 12px 18px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-3xl font-bold mb-4">スネークゲーム</h1>
+        <div id="score" class="score-display">スコア: 0</div>
+        <canvas id="snakeCanvas"></canvas>
+        <div id="messageBox" class="message-box"></div>
+        <div class="controls">
+            <button id="upButton" class="control-button">↑</button>
+            <button id="leftButton" class="control-button">←</button>
+            <button id="downButton" class="control-button">↓</button>
+            <button id="rightButton" class="control-button">→</button>
+            <button id="resetButton" class="control-button">リセット</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('snakeCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const messageBox = document.getElementById('messageBox');
+
+        // ゲームボードの設定
+        const GRID_SIZE = 20; // 1グリッドのサイズ (px)
+        const TILE_COUNT = 20; // 1辺のグリッド数 (20x20グリッド)
+
+        // キャンバスのサイズを設定
+        canvas.width = TILE_COUNT * GRID_SIZE;
+        canvas.height = TILE_COUNT * GRID_SIZE;
+
+        let snake = [{ x: 10, y: 10 }]; // ヘビの初期位置 (中央)
+        let food = {}; // エサの位置
+        let dx = 0; // x方向の移動量
+        let dy = 0; // y方向の移動量
+        let score = 0;
+        let gameOver = false;
+        let gameInterval;
+        let gameSpeed = 150; // ゲーム速度 (ミリ秒)
+
+        // ゲームの初期化
+        function initGame() {
+            snake = [{ x: 10, y: 10 }]; // ヘビの初期位置
+            dx = 0;
+            dy = 0;
+            score = 0;
+            gameOver = false;
+            updateScore();
+            hideMessage();
+            placeFood(); // エサを配置
+            if (gameInterval) clearInterval(gameInterval);
+            startGameLoop();
+            drawGame();
+        }
+
+        // ゲームボードと要素を描画
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // キャンバスをクリア
+
+            // エサを描画
+            ctx.fillStyle = '#FF4136'; // 赤色
+            ctx.fillRect(food.x * GRID_SIZE, food.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+
+            // ヘビを描画
+            for (let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = (i === 0) ? '#4CAF50' : '#8BC34A'; // ヘビの頭と体の色
+                ctx.fillRect(snake[i].x * GRID_SIZE, snake[i].y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                ctx.strokeStyle = '#333'; // ヘビの境界線
+                ctx.strokeRect(snake[i].x * GRID_SIZE, snake[i].y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+            }
+        }
+
+        // エサをランダムな位置に配置
+        function placeFood() {
+            let newFoodX, newFoodY;
+            do {
+                newFoodX = Math.floor(Math.random() * TILE_COUNT);
+                newFoodY = Math.floor(Math.random() * TILE_COUNT);
+            } while (isCollidingWithSnake(newFoodX, newFoodY)); // ヘビの体と重ならないように
+
+            food = { x: newFoodX, y: newFoodY };
+        }
+
+        // 指定された座標がヘビの体と衝突しているかチェック
+        function isCollidingWithSnake(x, y) {
+            for (let i = 0; i < snake.length; i++) {
+                if (snake[i].x === x && snake[i].y === y) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // ゲームの状態を更新
+        function updateGame() {
+            if (gameOver) return;
+
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+            // 壁との衝突チェック
+            if (head.x < 0 || head.x >= TILE_COUNT || head.y < 0 || head.y >= TILE_COUNT) {
+                endGame();
+                return;
+            }
+
+            // ヘビの体との衝突チェック
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    endGame();
+                    return;
+                }
+            }
+
+            snake.unshift(head); // 新しい頭を配列の先頭に追加
+
+            // エサを食べたかチェック
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                updateScore();
+                placeFood(); // 新しいエサを配置
+            } else {
+                snake.pop(); // エサを食べていなければ、ヘビのしっぽを削除
+            }
+
+            drawGame();
+        }
+
+        // スコアを更新
+        function updateScore() {
+            scoreDisplay.textContent = 'スコア: ' + score;
+        }
+
+        // ゲームループの開始
+        function startGameLoop() {
+            gameInterval = setInterval(updateGame, gameSpeed);
+        }
+
+        // ゲームオーバー処理
+        function endGame() {
+            gameOver = true;
+            clearInterval(gameInterval);
+            showMessage('ゲームオーバー！ スコア: ' + score, true);
+        }
+
+        // メッセージボックスの表示/非表示
+        function showMessage(msg, isGameOver = false) {
+            messageBox.textContent = msg;
+            messageBox.style.display = 'block';
+            if (isGameOver) {
+                messageBox.classList.add('bg-red-700', 'text-white');
+            } else {
+                messageBox.classList.remove('bg-red-700', 'text-white');
+            }
+        }
+
+        function hideMessage() {
+            messageBox.style.display = 'none';
+        }
+
+        // キーボードイベントリスナー
+        document.addEventListener('keydown', e => {
+            if (gameOver) return;
+            // ヘビが逆方向に移動するのを防ぐ
+            const keyPressed = e.key;
+            const goingUp = dy === -1;
+            const goingDown = dy === 1;
+            const goingLeft = dx === -1;
+            const goingRight = dx === 1;
+
+            if (keyPressed === 'ArrowLeft' && !goingRight) {
+                dx = -1;
+                dy = 0;
+            } else if (keyPressed === 'ArrowUp' && !goingDown) {
+                dx = 0;
+                dy = -1;
+            } else if (keyPressed === 'ArrowRight' && !goingLeft) {
+                dx = 1;
+                dy = 0;
+            } else if (keyPressed === 'ArrowDown' && !goingUp) {
+                dx = 0;
+                dy = 1;
+            }
+        });
+
+        // モバイルボタンイベントリスナー
+        document.getElementById('upButton').addEventListener('click', () => {
+            if (gameOver || dy === 1) return; // 下方向へ移動中の場合、上への変更を許可しない
+            dx = 0;
+            dy = -1;
+        });
+        document.getElementById('downButton').addEventListener('click', () => {
+            if (gameOver || dy === -1) return; // 上方向へ移動中の場合、下への変更を許可しない
+            dx = 0;
+            dy = 1;
+        });
+        document.getElementById('leftButton').addEventListener('click', () => {
+            if (gameOver || dx === 1) return; // 右方向へ移動中の場合、左への変更を許可しない
+            dx = -1;
+            dy = 0;
+        });
+        document.getElementById('rightButton').addEventListener('click', () => {
+            if (gameOver || dx === -1) return; // 左方向へ移動中の場合、右への変更を許可しない
+            dx = 1;
+            dy = 0;
+        });
+        document.getElementById('resetButton').addEventListener('click', () => {
+            initGame();
+        });
+
+        // タッチスワイプイベントリスナー
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        canvas.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault(); // スクロールを防ぐ
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].clientX;
+            touchEndY = e.changedTouches[0].clientY;
+
+            let deltaX = touchEndX - touchStartX;
+            let deltaY = touchEndY - touchStartY;
+
+            const SWIPE_THRESHOLD = 30; // スワイプと認識するしきい値
+
+            if (gameOver) return;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > SWIPE_THRESHOLD) {
+                // 水平スワイプ
+                if (deltaX > 0 && dx !== -1) { // 右スワイプ && 左へ移動中でない
+                    dx = 1;
+                    dy = 0;
+                } else if (deltaX < 0 && dx !== 1) { // 左スワイプ && 右へ移動中でない
+                    dx = -1;
+                    dy = 0;
+                }
+            } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > SWIPE_THRESHOLD) {
+                // 垂直スワイプ
+                if (deltaY > 0 && dy !== -1) { // 下スワイプ && 上へ移動中でない
+                    dx = 0;
+                    dy = 1;
+                } else if (deltaY < 0 && dy !== 1) { // 上スワイプ && 下へ移動中でない
+                    dx = 0;
+                    dy = -1;
+                }
+            }
+        });
+
+        // ウィンドウの読み込みが完了したらゲームを開始
+        window.onload = function() {
+            initGame(); // ゲームを初期化して開始
+        };
+
+        // ウィンドウのリサイズ時にキャンバスの幅を再設定
+        window.addEventListener('resize', () => {
+            // 現在のキャンバスサイズはCSSによって調整されているため、
+            // 内部的な描画はGRID_SIZEとTILE_COUNTに基づいて行われる。
+            // 必要に応じて、GRID_SIZEを動的に調整することも可能だが、
+            // 現在の実装ではアスペクト比1:1を維持し、CSSでスケールされる。
+            drawGame(); // 再描画して表示を更新
+        });
+
+    </script>
+</body>
+</html>
